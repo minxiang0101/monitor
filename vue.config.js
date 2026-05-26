@@ -31,7 +31,7 @@ module.exports = {
       .chunkFilename(`js/[name].[hash].${timestamp}.js`);
     config.plugin('html')
       .tap(args => {
-        const cdnPrefix = process.env.NODE_ENV === 'production' ? '/dp' : '';
+        const cdnPrefix = process.env.NODE_ENV === 'production' ? '/monitor' : '';
         args[0].cdn = {
           css: [
             `${cdnPrefix}/libs/element-ui/index.css`,

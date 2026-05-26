@@ -80,7 +80,7 @@
                   <i class="el-icon-rank"></i>
                   <span>拖拽换位</span>
                 </div>
-                <div class="pane-player">
+                <div class="pane-player" @dblclick.stop.prevent="handlePaneDoubleClick(pane)">
                   <HlsPlayer :ref="`hlsPlayer-${pane.paneIndex}`" :src="pane.videoUrl" />
                 </div>
                 <div v-if="pane.device" class="pane-ptz-control" @click.stop @mousedown.stop @dragstart.stop.prevent>
@@ -131,14 +131,14 @@
                     >
                       <i :class="isPanePaused(pane.paneIndex) ? 'el-icon-video-play' : 'el-icon-video-pause'"></i>
                     </button>
-                    <button
+                    <!-- <button
                       class="ptz-zoom-btn"
                       type="button"
                       :title="isPaneFullscreen(pane.paneIndex) ? '恢复' : '全屏'"
                       @click.stop="togglePaneFullscreen(pane.paneIndex)"
                     >
                       <i :class="isPaneFullscreen(pane.paneIndex) ? 'el-icon-copy-document' : 'el-icon-full-screen'"></i>
-                    </button>
+                    </button> -->
                   </div>
                 </div>
               </div>
@@ -372,6 +372,11 @@ export default {
       if (requestFullscreen) {
         requestFullscreen.call(paneElement)
       }
+    },
+    handlePaneDoubleClick(pane) {
+      if (!pane.device || !pane.videoUrl) return
+      this.selectPane(pane.paneIndex)
+      this.togglePaneFullscreen(pane.paneIndex)
     },
     exitFullscreen() {
       const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen

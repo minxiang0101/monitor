@@ -1,12 +1,12 @@
 <template>
     <div class="header">
         <!-- 天气 -->
-        <div class="weather">
+        <!-- <div class="weather">
             <div id="ww_9c0ba9b2508b3" v='1.3' loc='auto'
                 a='{"t":"ticker","lang":"zh","sl_lpl":1,"ids":[],"font":"Arial","sl_ics":"one_a","sl_sot":"celsius","cl_bkg":"#FFFFFF00","cl_font":"rgba(255,255,255,1)","cl_cloud":"#d4d4d4","cl_persp":"#2196F3","cl_sun":"#FFC107","cl_moon":"#FFC107","cl_thund":"#FF5722"}'>
                 <a href="https://weatherwidget.org/zh/" id="ww_9c0ba9b2508b3_u" target="_blank">天气插件</a>
             </div>
-        </div>
+        </div> -->
         <div class="marquee-container" id="marquee-container">
             <div class="marquee-content" id="marquee-content">{{ marqueeText }}</div>
         </div>
@@ -165,22 +165,22 @@ export default {
         // 检查AR监控URL是否可用
         this.checkArUrl();
         
-        // 加载天气插件脚本
-        const weatherScriptId = 'weather-widget-script';
-        if (!document.getElementById(weatherScriptId)) {
-            const script = document.createElement('script');
-            script.id = weatherScriptId;
-            script.async = true;
-            script.src = 'https://app3.weatherwidget.org/js/?id=ww_9c0ba9b2508b3';
-            document.head.appendChild(script);
-        } else {
-            // 如果脚本已存在，尝试调用其更新函数 (如果widget提供了此类接口)
-            // 根据 https://app3.weatherwidget.org/js/?id=ww_9c0ba9b2508b3 的内容，它会自动执行 updateWidget
-            // 如果需要手动触发，可能需要检查该脚本是否暴露了可调用的函数
-            if (typeof window.updateWidget === 'function') {
-                // window.updateWidget('ww_9c0ba9b2508b3', 0); // 假设有这样一个全局函数，根据实际情况调整
-            }
-        }
+        // // 加载天气插件脚本
+        // const weatherScriptId = 'weather-widget-script';
+        // if (!document.getElementById(weatherScriptId)) {
+        //     const script = document.createElement('script');
+        //     script.id = weatherScriptId;
+        //     script.async = true;
+        //     script.src = 'https://app3.weatherwidget.org/js/?id=ww_9c0ba9b2508b3';
+        //     document.head.appendChild(script);
+        // } else {
+        //     // 如果脚本已存在，尝试调用其更新函数 (如果widget提供了此类接口)
+        //     // 根据 https://app3.weatherwidget.org/js/?id=ww_9c0ba9b2508b3 的内容，它会自动执行 updateWidget
+        //     // 如果需要手动触发，可能需要检查该脚本是否暴露了可调用的函数
+        //     if (typeof window.updateWidget === 'function') {
+        //         // window.updateWidget('ww_9c0ba9b2508b3', 0); // 假设有这样一个全局函数，根据实际情况调整
+        //     }
+        // }
 
         document.querySelectorAll('.line').forEach((line) => {
             // 随机延迟
@@ -194,7 +194,7 @@ export default {
     methods: {
         getLInk(e) {
             if (process.env.NODE_ENV === 'production') {
-                return `/dp${e}`
+                return `/monitor${e}`
             }else {
                 return `${e}`
             }

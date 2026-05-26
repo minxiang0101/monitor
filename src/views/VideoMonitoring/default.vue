@@ -22,11 +22,17 @@
               node-key="__videoKey"
               :props="{ children: 'children', label: 'label' }"
               :expand-on-click-node="false"
+              :default-expand-all="defaultExpandAll"
               :default-expanded-keys="expandedDeviceKeys"
               :highlight-current="true"
               @node-click="handleDeviceNodeClick"
             >
-              <span slot-scope="{ data }" class="device-tree-node" :class="{ 'is-camera': data.type === 1 }">
+              <span
+                slot-scope="{ data }"
+                class="device-tree-node"
+                :class="{ 'is-camera': data.type === 1 }"
+                @dblclick.stop.prevent="handleDeviceNodeDoubleClick(data)"
+              >
                 <i :class="data.type === 1 ? 'el-icon-video-camera' : 'el-icon-folder'"></i>
                 <span>{{ data.label }}</span>
               </span>
@@ -168,9 +174,10 @@ export default {
       captureList: [],
       searchKey: '',
       videoLayout: '1', // '1', '4', '9'
-      activePaneIndex: 0,
+      activePaneIndex: null,
       paneDevices: Array(9).fill(null),
       videoUrlsForLayout: {},
+      defaultExpandAll: true,// 是否默认展开所有节点
       expandedDeviceKeys: [],
       activePtzCommands: {},
       pausedPaneMap: {},
@@ -191,7 +198,8 @@ export default {
         { command: 'ZOOM_OUT', label: '焦距变小', icon: 'el-icon-zoom-out' }
       ],
       dragPaneIndex: null,
-      dragOverPaneIndex: null
+      dragOverPaneIndex: null,
+      treeNodeClickTimer: null
     }
   },
   computed: {
@@ -206,11 +214,13 @@ export default {
     },
     visiblePanes() {
       if (this.videoLayout === '1') {
-        return [this.createPane(this.activePaneIndex)]
+        const paneIndex = this.activePaneIndex === null ? 0 : this.activePaneIndex
+        return [this.createPane(paneIndex)]
       }
       return Array.from({ length: this.layoutCount }, (_, index) => this.createPane(index))
     },
     currentDevice() {
+      if (this.activePaneIndex === null) return null
       return this.paneDevices[this.activePaneIndex] || null
     }
   },
@@ -223,6 +233,7 @@ export default {
   beforeDestroy() {
     document.removeEventListener('fullscreenchange', this.handleFullscreenChange)
     document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange)
+    this.clearTreeNodeClickTimer()
   },
   methods: {
     changeYt(type) {
@@ -375,7 +386,7 @@ export default {
     },
     handlePaneDoubleClick(pane) {
       if (!pane.device || !pane.videoUrl) return
-      this.selectPane(pane.paneIndex)
+      this.activePaneIndex = pane.paneIndex
       this.togglePaneFullscreen(pane.paneIndex)
     },
     exitFullscreen() {
@@ -397,6 +408,9 @@ export default {
       getVideoTree().then(res => {
         this.allDevices = this.normalizeVideoTree(res.data)
         this.devices = this.allDevices
+        this.$nextTick(() => {
+          this.applyDefaultTreeExpansion()
+        })
       })
     },
     handleSearch() {
@@ -407,15 +421,12 @@ export default {
       this.devices = keyword ? this.filterVideoTree(this.allDevices, keyword) : this.allDevices
       this.$nextTick(() => {
         if (!keyword) {
-          this.expandedDeviceKeys = []
+          this.applyDefaultTreeExpansion()
           return
         }
         const expandedKeys = this.collectTreeKeys(this.devices, false)
         this.expandedDeviceKeys = expandedKeys
-        expandedKeys.forEach(key => {
-          const treeNode = this.$refs.deviceTree?.getNode(key)
-          if (treeNode) treeNode.expanded = true
-        })
+        this.setTreeNodesExpanded(expandedKeys, true)
         const firstCamera = this.findFirstCamera(this.devices)
         if (firstCamera) {
           this.$refs.deviceTree?.setCurrentKey(firstCamera.__videoKey)
@@ -468,6 +479,17 @@ export default {
         return keys
       }, [])
     },
+    setTreeNodesExpanded(keys, expanded) {
+      keys.forEach(key => {
+        const treeNode = this.$refs.deviceTree?.getNode(key)
+        if (treeNode) treeNode.expanded = expanded
+      })
+    },
+    applyDefaultTreeExpansion() {
+      const treeKeys = this.collectTreeKeys(this.devices, false)
+      this.expandedDeviceKeys = this.defaultExpandAll ? treeKeys : []
+      this.setTreeNodesExpanded(treeKeys, this.defaultExpandAll)
+    },
     findFirstCamera(tree) {
       for (const node of tree) {
         if (node.type === 1) return node
@@ -489,29 +511,107 @@ export default {
       }
     },
     selectPane(index) {
-      this.activePaneIndex = index
+      this.activePaneIndex = this.activePaneIndex === index ? null : index
+    },
+    getAutoFillPaneOrder() {
+      if (this.videoLayout === '1') {
+        return [0]
+      }
+      if (this.videoLayout === '4') {
+        return [0, 1, 2, 3]
+      }
+      if (this.videoLayout === '9') {
+        return [0, 1, 2, 3, 4, 5, 6, 7, 8]
+      }
+      return []
+    },
+    getNextAutoFillPaneIndex() {
+      return this.getAutoFillPaneOrder().find(index => !this.paneDevices[index])
+    },
+    getEmptyAutoFillPaneIndexes() {
+      return this.getAutoFillPaneOrder().filter(index => !this.paneDevices[index])
+    },
+    collectCameraNodes(node) {
+      if (!node) return []
+      if (node.type === 1) return [node]
+      return (node.children || []).reduce((result, child) => {
+        result.push(...this.collectCameraNodes(child))
+        return result
+      }, [])
+    },
+    getPlayingVideoIdSet() {
+      return this.paneDevices.reduce((result, device) => {
+        const videoId = this.getDeviceVideoId(device)
+        if (videoId) result.add(String(videoId))
+        return result
+      }, new Set())
+    },
+    clearTreeNodeClickTimer() {
+      if (this.treeNodeClickTimer) {
+        clearTimeout(this.treeNodeClickTimer)
+        this.treeNodeClickTimer = null
+      }
+    },
+    scheduleTreeNodeToggle(node) {
+      this.clearTreeNodeClickTimer()
+      this.treeNodeClickTimer = setTimeout(() => {
+        node.expanded = !node.expanded
+        this.treeNodeClickTimer = null
+      }, 300)
     },
     handleDeviceNodeClick(data, node) {
       if (data.type !== 1) {
-        node.expanded = !node.expanded
+        this.scheduleTreeNodeToggle(node)
         return
       }
       this.selectDevice(data)
     },
+    handleDeviceNodeDoubleClick(data) {
+      this.clearTreeNodeClickTimer()
+      if (this.activePaneIndex !== null || data.type === 1) return
+      const emptyPaneIndexes = this.getEmptyAutoFillPaneIndexes()
+      if (emptyPaneIndexes.length === 0) {
+        this.$message.warning('播放窗口已满，请先关闭现有视频')
+        return
+      }
+      const playingVideoIds = this.getPlayingVideoIdSet()
+      const cameraNodes = this.collectCameraNodes(data).filter(item => {
+        const videoId = this.getDeviceVideoId(item)
+        return videoId && !playingVideoIds.has(String(videoId))
+      })
+      cameraNodes.slice(0, emptyPaneIndexes.length).forEach((item, index) => {
+        this.setPaneDevice(emptyPaneIndexes[index], item)
+      })
+    },
+    setPaneDevice(paneIndex, item) {
+      const videoId = this.getDeviceVideoId(item)
+      if (!videoId) return false
+      this.$set(this.paneDevices, paneIndex, item)
+      this.$delete(this.pausedPaneMap, paneIndex)
+      if (!this.videoUrlsForLayout[videoId]) {
+        this.getVideoStream(videoId)
+      }
+      return true
+    },
     selectDevice(item) {
+      const targetPaneIndex = this.activePaneIndex === null ? this.getNextAutoFillPaneIndex() : this.activePaneIndex
+      if (targetPaneIndex === undefined) {
+        if (this.layoutCount > 1) {
+          this.$message.warning('播放窗口已满，请先选择窗口或关闭现有视频')
+          return
+        }
+        this.$message.warning('请先选择播放窗口')
+        return
+      }
       const videoId = this.getDeviceVideoId(item)
       if (!videoId) {
         this.$message.warning('当前设备缺少视频ID')
         return
       }
-      this.$set(this.paneDevices, this.activePaneIndex, item)
-      this.$delete(this.pausedPaneMap, this.activePaneIndex)
+      this.setPaneDevice(targetPaneIndex, item)
       this.$nextTick(() => {
         this.$refs.deviceTree?.setCurrentKey(item.__videoKey)
       })
-      if (!this.videoUrlsForLayout[videoId]) {
-        this.getVideoStream(videoId)
-      }
     },
     closePaneVideo(index) {
       this.$set(this.paneDevices, index, null)
@@ -568,7 +668,7 @@ export default {
     changeLayout(layout) {
       this.resetPaneDragState()
       this.videoLayout = layout
-      if (layout === '4' && this.activePaneIndex > 3) {
+      if (layout === '4' && this.activePaneIndex !== null && this.activePaneIndex > 3) {
         this.activePaneIndex = 0
       }
     }

@@ -294,14 +294,14 @@ export default {
                 if (arUrl && arUrl.trim() !== '') {
                     this.arUrlAvailable = true;
                     // 动态添加AR监控子菜单
-                    const videoNavItem = this.leftNavItems.find(item => item.href === '/video');
-                    if (videoNavItem && !videoNavItem.children.some(child => child.href === '/video/ar')) {
-                        videoNavItem.children.push({
-                            text: 'AR监控',
-                            href: '/video/ar',
-                            permission: 'isVideo'
-                        });
-                    }
+                    // const videoNavItem = this.leftNavItems.find(item => item.href === '/video');
+                    // if (videoNavItem && !videoNavItem.children.some(child => child.href === '/video/ar')) {
+                    //     videoNavItem.children.push({
+                    //         text: 'AR监控',
+                    //         href: '/video/ar',
+                    //         permission: 'isVideo'
+                    //     });
+                    // }
                 } else {
                     this.arUrlAvailable = false;
                     // 移除AR监控子菜单（如果存在）

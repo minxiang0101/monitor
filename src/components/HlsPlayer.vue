@@ -1,10 +1,10 @@
 <template>
-  <div class="video-container" :style="containerStyle">
+  <div class="video-container" :class="{ 'has-device': hasDevice }" :style="containerStyle">
     <!-- 当src为空时显示占位符 -->
     <div v-if="!src || src.trim() === ''" class="video-placeholder">
       <div class="placeholder-content">
         <div class="placeholder-icon">📹</div>
-        <p class="placeholder-text">请先选择某个监控画面</p>
+        <p class="placeholder-text">{{ emptyText }}</p>
       </div>
     </div>
     
@@ -35,6 +35,14 @@ export default {
     aspectRatio: {
       type: Number,
       default: null
+    },
+    emptyText: {
+      type: String,
+      default: '请先选择某个监控画面'
+    },
+    hasDevice: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -189,6 +197,10 @@ export default {
   overflow: hidden;
 }
 
+.video-container.has-device {
+  background-color: #000;
+}
+
 .video-player {
   position: absolute;
   top: 0;
@@ -209,6 +221,10 @@ export default {
   /* background-color: #f5f5f5;
   border: 2px dashed #ddd; */
   border-radius: 8px;
+}
+
+.video-container.has-device .video-placeholder {
+  background-color: #000;
 }
 
 .placeholder-content {

@@ -87,7 +87,12 @@
                   <span>拖拽换位</span>
                 </div>
                 <div class="pane-player" @dblclick.stop.prevent="handlePaneDoubleClick(pane)">
-                  <HlsPlayer :ref="`hlsPlayer-${pane.paneIndex}`" :src="pane.videoUrl" />
+                  <HlsPlayer
+                    :ref="`hlsPlayer-${pane.paneIndex}`"
+                    :src="pane.videoUrl"
+                    :has-device="!!pane.device"
+                    :empty-text="pane.device ? '视频已断开' : '请先选择某个监控画面'"
+                  />
                 </div>
                 <div v-if="pane.device" class="pane-ptz-control" @click.stop @mousedown.stop @dragstart.stop.prevent>
                   <div v-if="isPtzSupported(pane.device)" class="ptz-grid">
@@ -561,7 +566,7 @@ export default {
     },
     handleDeviceNodeClick(data, node) {
       if (data.type !== 1) {
-        this.scheduleTreeNodeToggle(node)
+        // this.scheduleTreeNodeToggle(node)
         return
       }
       this.selectDevice(data)
